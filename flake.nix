@@ -14,7 +14,7 @@
         packages = with pkgs; [
           (python312.withPackages (pypkgs: with pypkgs; [
             numpy
-            nptyping
+            pytorch            
           ]))
         ];
       };
