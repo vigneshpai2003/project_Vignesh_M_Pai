@@ -1,2 +1,8 @@
 .direnv
 __pycache__
+/torrent
+/Chunk_1
+/venv
+/processed
+*.bak
+*.npz
