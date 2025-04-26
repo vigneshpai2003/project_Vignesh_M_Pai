@@ -7,6 +7,9 @@ from config import *
 
 
 def load_frames(video_path):
+    """
+    Load frames from a video file and convert them to grayscale.
+    """
     cap = cv2.VideoCapture(video_path)
     frames = []
     while cap.isOpened():
@@ -21,6 +24,9 @@ def load_frames(video_path):
 
 
 def create_clips(frames, speeds):
+    """
+    Create clips of frames and their corresponding speeds.
+    """
     X, y = [], []
 
     for i in range(0, len(frames) - CLIP_LENGTH, CLIP_STRIDE):
@@ -36,6 +42,9 @@ def create_clips(frames, speeds):
 
 
 def preprocess_segment(segment):
+    """
+    Preprocess a segment of the dataset.
+    """
     frames = load_frames(segment + 'video.hevc')
     frame_times = np.load(segment + 'global_pose/frame_times')[:len(frames)]
     speeds = np.load(segment + 'processed_log/CAN/speed/value')
@@ -73,6 +82,9 @@ def preprocess_segment(segment):
 
 
 def preprocess_route(route):
+    """
+    Preprocess a route of the dataset.
+    """
     all_X, all_y = [], []
 
     for segment in tqdm(os.listdir(route), desc=f"Processing route {route}", leave=False):
@@ -87,6 +99,9 @@ def preprocess_route(route):
 
 
 def preprocess_chunk(chunk):
+    """
+    Preprocess a chunk of the dataset.
+    """
     all_X, all_y = [], []
 
     for route in tqdm(os.listdir(chunk), desc=f"Processing chunk {chunk}"):
@@ -98,18 +113,21 @@ def preprocess_chunk(chunk):
 
     all_X = np.concatenate(all_X, axis=0)
     all_y = np.concatenate(all_y, axis=0)
-    
+
     return all_X, all_y
 
 
 def preprocess_all():
+    """
+    Preprocess all chunks of the dataset.
+    """
     all_X, all_y = [], []
-    
+
     for chunk in ['./Chunk_1/']:
         X, y = preprocess_chunk(chunk)
         all_X.append(X)
         all_y.append(y)
-    
+
     all_X = np.concatenate(all_X, axis=0)
     all_y = np.concatenate(all_y, axis=0)
 
