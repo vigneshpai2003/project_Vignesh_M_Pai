@@ -1,6 +1,7 @@
 import os
 import cv2
 import numpy as np
+from tqdm import tqdm
 
 from config import *
 
@@ -16,7 +17,7 @@ def load_frames(video_path):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frames.append(frame)
     cap.release()
-    return np.array(frames)
+    return np.array(frames, dtype=np.float32) / 255.0
 
 
 def create_clips(frames, speeds):
@@ -31,7 +32,7 @@ def create_clips(frames, speeds):
             X.append(clip)
             y.append(np.mean(clip_speeds))
 
-    return np.expand_dims(np.array(X), axis=1), np.array(y)
+    return np.expand_dims(np.array(X), axis=1), np.array(y, dtype=np.float32)
 
 
 def preprocess_segment(segment):
@@ -40,10 +41,8 @@ def preprocess_segment(segment):
     speeds = np.load(segment + 'processed_log/CAN/speed/value')
     speed_times = np.load(segment + 'processed_log/CAN/speed/t')
 
-    assert len(frame_times) == len(
-        frames), "Frame times and frames length mismatch"
-    assert len(speed_times) == len(
-        speeds), "Speed times and speeds length mismatch"
+    assert len(frame_times) == len(frames), "Frame times and frames length mismatch"
+    assert len(speed_times) == len(speeds), "Speed times and speeds length mismatch"
 
     for i, t in enumerate(frame_times):
         if t > speed_times[0]:
@@ -74,11 +73,9 @@ def preprocess_segment(segment):
 
 
 def preprocess_route(route):
-    print(f"Processing route: {route} ...", end=' ', flush=True)
-
     all_X, all_y = [], []
 
-    for segment in os.listdir(route):
+    for segment in tqdm(os.listdir(route), desc=f"Processing route {route}", leave=False):
         X, y = preprocess_segment(route + segment + '/')
         all_X.append(X)
         all_y.append(y)
@@ -86,16 +83,13 @@ def preprocess_route(route):
     all_X = np.concatenate(all_X, axis=0)
     all_y = np.concatenate(all_y, axis=0)
 
-    print(f"Done. {len(all_X)} clips created.")
-
     return all_X, all_y
 
 
 def preprocess_chunk(chunk):
-    print(f"Processing chunk: {chunk} ...")
     all_X, all_y = [], []
 
-    for route in os.listdir(chunk):
+    for route in tqdm(os.listdir(chunk), desc=f"Processing chunk {chunk}"):
         if not os.path.isdir(chunk + route):
             continue
         X, y = preprocess_route(chunk + route + '/')
@@ -104,15 +98,25 @@ def preprocess_chunk(chunk):
 
     all_X = np.concatenate(all_X, axis=0)
     all_y = np.concatenate(all_y, axis=0)
-
-    print(f"Done. {len(all_X)} clips created.")
-    np.savez_compressed(f'processed/{DATA_CONFIG}.npz', X=all_X, y=all_y)
+    
+    return all_X, all_y
 
 
 def preprocess_all():
+    all_X, all_y = [], []
+    
     for chunk in ['./Chunk_1/']:
-        preprocess_chunk(chunk)
+        X, y = preprocess_chunk(chunk)
+        all_X.append(X)
+        all_y.append(y)
+    
+    all_X = np.concatenate(all_X, axis=0)
+    all_y = np.concatenate(all_y, axis=0)
+
+    os.makedirs(f'processed/{DATA_CONFIG}', exist_ok=True)
+    np.save(f'processed/{DATA_CONFIG}/samples.npy', all_X)
+    np.save(f'processed/{DATA_CONFIG}/labels.npy', all_y)
 
 
 if __name__ == '__main__':
-    preprocess_chunk('./Chunk_1/')
+    preprocess_all()
